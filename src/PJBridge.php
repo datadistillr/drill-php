@@ -13,7 +13,7 @@ class PJBridge
 
   public $last_search_length = 0;
 
-  function __construct($host = "localhost", $port = "8047", $jdbc_enc = "ascii", $app_enc = "ascii")
+  function __construct($host = "localhost", $port = 8047, $jdbc_enc = "ascii", $app_enc = "ascii")
   {
 
     $this->sock = fsockopen($host, $port);
