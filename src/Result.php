@@ -2,6 +2,8 @@
 
 namespace thedataist\Drill;
 
+use PhpParser\Node\Expr\Array_;
+
 /**
  * @package Drill
  * @author Charles Givre <cgivre@thedataist.com>
@@ -13,6 +15,10 @@ class Result {
 	protected $row_pointer;
 	protected $metadata;
 	protected $schema = array();
+
+	// These variables are used for JDBC connections
+  protected $jdbc_row_pointer;
+  protected $jdbc_connction;
 
 	/**
 	 * Cleans the data types and specifically removes precision information
@@ -39,20 +45,45 @@ class Result {
 	 *
 	 * @param $response
 	 * @param $query
+   * @param bool $isJDBC
+   * @param PJBridge $JDBC_Connection
+   * @param $cursor
 	 */
-	function __construct($response, $query) {
-		$this->columns = $response['columns'];
-		$this->rows = $response['rows'];
-		$this->metadata = $response['metadata'];
-		$this->query = $query;
-		$this->row_pointer = 0;
+	function __construct($response, $query, $isJDBC = false, $JDBC_Connection=null, $cursor=null) {
+		if ($isJDBC) {
+		  $this->query = $query;
 
-		for ($i = 0; $i < count($this->columns); $i++) {
-			$info = [];
-			$info['column'] = $this->columns[$i];
-			$info['data_type'] = self::clean_data_type_name($this->metadata[$i]);
-			array_push($this->schema, $info);
-		}
+      // Not sure if we'll need these..
+		  $this->jdbc_connction = $JDBC_Connection;
+      $this->jdbc_row_pointer = $cursor;
+      $this->rows = [];
+      $this->columns = [];
+      $this->row_pointer = 0;
+      $isFirstRow = true;
+
+      while($row = $this->jdbc_connction->fetch_array($this->jdbc_row_pointer)){
+        if ($isFirstRow) {
+          foreach($row as $columnName => $value) {
+            array_push($this->columns, $columnName);
+          }
+          $isFirstRow = false;
+        }
+        array_push($this->rows, $row);
+      }
+    } else {
+      $this->columns = $response['columns'];
+      $this->rows = $response['rows'];
+      $this->metadata = $response['metadata'];
+      $this->query = $query;
+      $this->row_pointer = 0;
+
+      for ($i = 0; $i < count($this->columns); $i++) {
+        $info = [];
+        $info['column'] = $this->columns[$i];
+        $info['data_type'] = self::clean_data_type_name($this->metadata[$i]);
+        array_push($this->schema, $info);
+      }
+    }
 	}
 
 	function data_seek($n) {
